@@ -1,22 +1,26 @@
 use core::panic;
-use std::{borrow::Borrow, fs::{create_dir, read_to_string, File}, io::Write, process::Command};
+use std::{
+    borrow::Borrow,
+    fs::{create_dir, read_to_string, File},
+    io::Write,
+    process::Command,
+};
 
+use chrono::Datelike;
+use clap::Parser;
 use reqwest::Url;
 use tokio;
-use clap::Parser;
-use chrono::Datelike;
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
     // #[arg(short, long)]
     // path: String,
-
     #[arg(short, long, default_value_t = chrono::Utc::now().year())]
     year: i32,
 
     #[arg(short, long, default_value_t = chrono::Utc::now().day())]
-    day: u32
+    day: u32,
 }
 
 #[tokio::main]
@@ -25,7 +29,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let year = args.year;
     let day = args.day;
 
-    let url = Url::parse(format!("https://adventofcode.com/{year}/day/{day}/input").borrow()).unwrap();
+    let url =
+        Url::parse(format!("https://adventofcode.com/{year}/day/{day}/input").borrow()).unwrap();
 
     let client = reqwest::Client::new();
 
@@ -38,19 +43,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         panic!("Session key is empty");
     }
 
-    let response = client.get(url).header("Cookie", format!("session={session_key}")).send().await?;
+    let response = client
+        .get(url)
+        .header("Cookie", format!("session={session_key}"))
+        .header(
+            "User-Agent",
+            "https://github.com/username2000w/AoC-Rust-Utils/ by username2000w",
+        )
+        .send()
+        .await?;
 
     let input = response.text().await?;
 
     match Command::new("cargo")
         .arg("new")
         .arg(format!("day{day}"))
-        .spawn() {
-            Ok(mut child) => {
-                child.wait().unwrap();
-            },
-            Err(e) => println!("failed to execute process: {}", e),
+        .spawn()
+    {
+        Ok(mut child) => {
+            child.wait().unwrap();
         }
+        Err(e) => println!("failed to execute process: {}", e),
+    }
 
     let mut file = File::create(format!("day{day}/input.txt"))?;
     file.write_all(input.as_bytes())?;
